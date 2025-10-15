@@ -5,20 +5,21 @@ import {useEffect, useState} from "react"
 import {MailIcon, MapPinIcon} from "lucide-react"
 import Loading from "@/components/Loading"
 import Image from "next/image"
-import axios from "axios";
-import toast from "react-hot-toast";
+import axios from "axios"
+import toast from "react-hot-toast"
 
 export default function StoreShop() {
-
     const {username} = useParams()
     const [products, setProducts] = useState([])
     const [storeInfo, setStoreInfo] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [currentPage, setCurrentPage] = useState(1)
+    const productsPerPage = 12
 
     const fetchStoreData = async () => {
         try {
             const {data} = await axios.get(`/api/store/data?username=${username}`)
-            setStoreInfo(data.store);
+            setStoreInfo(data.store)
             setProducts(data.store.Product)
         } catch (error) {
             toast.error(error?.response?.data?.error || error.message)
@@ -30,9 +31,19 @@ export default function StoreShop() {
         fetchStoreData()
     }, [])
 
+    // ✅ Pagination logic
+    const totalPages = Math.ceil(products.length / productsPerPage)
+    const startIndex = (currentPage - 1) * productsPerPage
+    const endIndex = startIndex + productsPerPage
+    const paginatedProducts = products.slice(startIndex, endIndex)
+
+    const handlePageChange = (page) => {
+        setCurrentPage(page)
+        window.scrollTo({top: 0, behavior: "smooth"})
+    }
+
     return !loading ? (
         <div className="min-h-[70vh] mx-6">
-
             {/* Store Info Banner */}
             {storeInfo && (
                 <div
@@ -47,8 +58,7 @@ export default function StoreShop() {
                     <div className="text-center md:text-left">
                         <h1 className="text-3xl font-semibold text-slate-800">{storeInfo.name}</h1>
                         <p className="text-sm text-slate-600 mt-2 max-w-lg">{storeInfo.description}</p>
-                        <div className="text-xs text-slate-500 mt-4 space-y-1"></div>
-                        <div className="space-y-2 text-sm text-slate-500">
+                        <div className="space-y-2 text-sm text-slate-500 mt-4">
                             <div className="flex items-center">
                                 <MapPinIcon className="w-4 h-4 text-gray-500 mr-2"/>
                                 <span>{storeInfo.address}</span>
@@ -57,19 +67,47 @@ export default function StoreShop() {
                                 <MailIcon className="w-4 h-4 text-gray-500 mr-2"/>
                                 <span>{storeInfo.email}</span>
                             </div>
-
                         </div>
                     </div>
                 </div>
             )}
 
             {/* Products */}
-            <div className=" max-w-7xl mx-auto mb-40">
-                <h1 className="text-2xl mt-12">Shop <span className="text-slate-800 font-medium">Products</span></h1>
-                <div className="mt-5 grid grid-cols-2 sm:flex flex-wrap gap-6 xl:gap-12 mx-auto">
-                    {products.map((product) => <ProductCard key={product.id} product={product}/>)}
+            <div className="max-w-7xl mx-auto mb-40">
+                <h1 className="text-2xl mt-12">
+                    Shop <span className="text-slate-800 font-medium">Products</span>
+                </h1>
+
+                <div className="mt-5 grid grid-cols-2 sm:flex flex-wrap gap-6 xl:gap-12 mx-auto mb-10">
+                    {paginatedProducts.map((product) => (
+                        <ProductCard key={product.id} product={product}/>
+                    ))}
                 </div>
+
+                {/* ✅ Pagination */}
+                {totalPages > 1 && (
+                    <div className="flex justify-center items-center gap-2 mb-20">
+                        {Array.from({length: totalPages}).map((_, index) => {
+                            const pageNum = index + 1
+                            return (
+                                <button
+                                    key={pageNum}
+                                    onClick={() => handlePageChange(pageNum)}
+                                    className={`px-4 py-2 rounded-md border text-sm ${
+                                        currentPage === pageNum
+                                            ? "bg-slate-700 text-white border-slate-700"
+                                            : "bg-white text-slate-600 border-slate-300 hover:bg-slate-100"
+                                    }`}
+                                >
+                                    {pageNum}
+                                </button>
+                            )
+                        })}
+                    </div>
+                )}
             </div>
         </div>
-    ) : <Loading/>
+    ) : (
+        <Loading/>
+    )
 }

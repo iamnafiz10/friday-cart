@@ -39,8 +39,8 @@ const Navbar = () => {
                     <div className="hidden sm:flex items-center gap-4 lg:gap-8 text-slate-600">
                         <Link href="/">Home</Link>
                         <Link href="/shop">Shop</Link>
-                        <Link href="/">About</Link>
-                        <Link href="/">Contact</Link>
+                        <Link href="/about">About</Link>
+                        <Link href="/contact">Contact</Link>
 
                         <form onSubmit={handleSearch}
                               className="hidden xl:flex items-center w-xs text-sm gap-2 bg-slate-100 px-4 py-3 rounded-full">
@@ -76,29 +76,29 @@ const Navbar = () => {
 
                     {/* Mobile User Button  */}
                     <div className="sm:hidden">
-                        {
-                            user ? (
-                                <div>
-                                    <UserButton>
-                                        <UserButton.MenuItems>
-                                            <UserButton.Action labelIcon={<ShoppingCart size={16}/>} label="Cart"
-                                                               onClick={() => router.push('/cart')}/>
-                                        </UserButton.MenuItems>
-                                    </UserButton>
-                                    <UserButton>
-                                        <UserButton.MenuItems>
-                                            <UserButton.Action labelIcon={<PackageIcon size={16}/>} label="My orders"
-                                                               onClick={() => router.push('/orders')}/>
-                                        </UserButton.MenuItems>
-                                    </UserButton>
-                                </div>
-                            ) : (
-                                <button onClick={openSignIn}
-                                        className="px-7 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-sm transition text-white rounded-full">
-                                    Login
-                                </button>
-                            )
-                        }
+                        {user ? (
+                            <UserButton>
+                                <UserButton.MenuItems>
+                                    <UserButton.Action
+                                        labelIcon={<ShoppingCart size={16}/>}
+                                        label="Cart"
+                                        onClick={() => router.push('/cart')}
+                                    />
+                                    <UserButton.Action
+                                        labelIcon={<PackageIcon size={16}/>}
+                                        label="My orders"
+                                        onClick={() => router.push('/orders')}
+                                    />
+                                </UserButton.MenuItems>
+                            </UserButton>
+                        ) : (
+                            <button
+                                onClick={openSignIn}
+                                className="px-7 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-sm transition text-white rounded-full"
+                            >
+                                Login
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
