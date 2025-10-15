@@ -1,23 +1,23 @@
 'use client';
 import {PlusIcon, SquarePenIcon, XIcon} from 'lucide-react';
-import React, {useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import AddressModal from './AddressModal';
 import {useDispatch, useSelector} from 'react-redux';
 import toast from 'react-hot-toast';
 import {useRouter} from 'next/navigation';
-import {Protect, useAuth, useUser} from '@clerk/nextjs';
+import {useAuth, useUser} from '@clerk/nextjs';
 import axios from 'axios';
 import {fetchCart} from '@/lib/features/cart/cartSlice';
-import {deleteAddress} from '@/lib/features/address/addressSlice'; // ✅ NEW
+import {deleteAddress} from '@/lib/features/address/addressSlice';
 
 const OrderSummary = ({totalPrice, items}) => {
     const {user} = useUser();
     const {getToken} = useAuth();
     const dispatch = useDispatch();
-    const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$';
+    const currency = '৳'; // Always use BDT Taka symbol
     const router = useRouter();
 
-    const addressList = useSelector((state) => state.address.list);
+    const addressList = useSelector((state) => state.address.list || []);
 
     const [paymentMethod, setPaymentMethod] = useState('COD');
     const [selectedAddress, setSelectedAddress] = useState(null);
@@ -25,13 +25,14 @@ const OrderSummary = ({totalPrice, items}) => {
     const [couponCodeInput, setCouponCodeInput] = useState('');
     const [coupon, setCoupon] = useState('');
 
+    // ref to detect addressList length changes
+    const prevAddressCount = useRef(addressList.length);
+
     // 🟢 Handle coupon
     const handleCouponCode = async (event) => {
         event.preventDefault();
         try {
-            if (!user) {
-                return toast('Please login to proceed');
-            }
+            if (!user) return toast('Please login to proceed');
             const token = await getToken();
             const {data} = await axios.post(
                 '/api/coupon',
@@ -49,12 +50,8 @@ const OrderSummary = ({totalPrice, items}) => {
     const handlePlaceOrder = async (e) => {
         e.preventDefault();
         try {
-            if (!user) {
-                return toast('Please login to place an order');
-            }
-            if (!selectedAddress) {
-                return toast('Please select an address');
-            }
+            if (!user) return toast('Please login to place an order');
+            if (!selectedAddress) return toast('Please select an address');
 
             const token = await getToken();
             const orderData = {
@@ -63,9 +60,7 @@ const OrderSummary = ({totalPrice, items}) => {
                 paymentMethod,
             };
 
-            if (coupon) {
-                orderData.couponCode = coupon.code;
-            }
+            if (coupon) orderData.couponCode = coupon.code;
 
             const {data} = await axios.post('/api/orders', orderData, {
                 headers: {Authorization: `Bearer ${token}`},
@@ -82,21 +77,93 @@ const OrderSummary = ({totalPrice, items}) => {
             toast.error(error?.response?.data?.error || error.message);
         }
     };
-
-    // 🟠 Delete address
+// 🟠 Delete address
     const handleDeleteAddress = async (id) => {
         try {
             await dispatch(deleteAddress({id, getToken})).unwrap();
+
+            // if deleted address was selected, clear selection
+            if (selectedAddress?.id === id) {
+                setSelectedAddress(null);
+            }
+
             toast.success('Address deleted successfully');
         } catch (error) {
-            console.error(error);
-            toast.error(error?.error || 'Failed to delete address');
+            console.error('Delete address error:', error);
+            // handle empty error object or undefined safely
+            const message =
+                error?.response?.data?.error ||
+                error?.message ||
+                (typeof error === 'string' ? error : null) ||
+                'Failed to delete address';
+            toast.error(message);
         }
     };
 
+    // 🟣 Dynamic shipping cost logic
+    const shippingFee =
+        selectedAddress && selectedAddress.city?.toLowerCase() === 'dhaka' ? 80 : 150;
+
+    // 🧮 Calculate totals
+    const discount = coupon ? (coupon.discount / 100) * totalPrice : 0;
+    const finalTotal = totalPrice - discount + shippingFee;
+
+    // When addressList changes (length increased), auto-select the newest address
+    useEffect(() => {
+        const prevCount = prevAddressCount.current;
+        const currentCount = addressList.length;
+
+        // If an address was added (count increased) and the modal is closed,
+        // pick the newest address automatically and select it.
+        if (currentCount > prevCount) {
+            // find newest by createdAt if available
+            let newest = null;
+            try {
+                newest = addressList.slice().sort((a, b) => {
+                    const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                    const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                    return ta - tb;
+                }).pop();
+            } catch {
+                // fall back to last element
+                newest = addressList[addressList.length - 1];
+            }
+
+            // only auto-select if modal just closed or nothing is selected
+            if (!showAddressModal) {
+                setSelectedAddress(newest || null);
+            }
+        }
+
+        prevAddressCount.current = currentCount;
+    }, [addressList, showAddressModal]);
+
+    // If addressList is populated and nothing selected, optionally pre-select top address
+    useEffect(() => {
+        if (!selectedAddress && addressList.length > 0) {
+            // choose the newest address (by createdAt if present)
+            let newest = null;
+            try {
+                newest = addressList.slice().sort((a, b) => {
+                    const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                    const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                    return ta - tb;
+                }).pop();
+            } catch {
+                newest = addressList[addressList.length - 1];
+            }
+            // set it as selected only if the user hasn't selected one
+            // (keeps current UX: user must tap to change)
+            // comment this line if you don't want automatic pre-selection on page load
+            // setSelectedAddress(newest || null);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // run once on mount
+
     return (
         <div
-            className="w-full max-w-lg lg:max-w-[340px] bg-slate-50/30 border border-slate-200 text-slate-500 text-sm rounded-xl p-7">
+            className="w-full max-w-lg lg:max-w-[340px] bg-slate-50/30 border border-slate-200 text-slate-500 text-sm rounded-xl p-7"
+        >
             <h2 className="text-xl font-medium text-slate-600">Payment Summary</h2>
             <p className="text-slate-400 text-xs my-4">Payment Method</p>
 
@@ -109,22 +176,8 @@ const OrderSummary = ({totalPrice, items}) => {
                     checked={paymentMethod === 'COD'}
                     className="accent-gray-500"
                 />
-                <label htmlFor="COD" className="cursor-pointer">
-                    COD
-                </label>
-            </div>
-
-            <div className="flex gap-2 items-center mt-1">
-                <input
-                    type="radio"
-                    id="STRIPE"
-                    name="payment"
-                    onChange={() => setPaymentMethod('STRIPE')}
-                    checked={paymentMethod === 'STRIPE'}
-                    className="accent-gray-500"
-                />
-                <label htmlFor="STRIPE" className="cursor-pointer">
-                    Stripe Payment
+                <label htmlFor="COD" className="cursor-pointer font-semibold">
+                    COD <span className="text-green-500">(প্রোডাক্ট হাতে পেয়ে টাকা দিন)</span>
                 </label>
             </div>
 
@@ -134,8 +187,7 @@ const OrderSummary = ({totalPrice, items}) => {
                 {selectedAddress ? (
                     <div className="flex gap-2 items-center">
                         <p>
-                            {selectedAddress.name}, {selectedAddress.city},{' '}
-                            {selectedAddress.state}, {selectedAddress.zip}
+                            {selectedAddress.name}, {selectedAddress.city}, {selectedAddress.state}, {selectedAddress.zip}
                         </p>
                         <SquarePenIcon
                             onClick={() => setSelectedAddress(null)}
@@ -147,29 +199,38 @@ const OrderSummary = ({totalPrice, items}) => {
                     <div>
                         {addressList.length > 0 && (
                             <div className="my-3 space-y-2">
-                                {addressList.map((address) => (
-                                    <div
-                                        key={address.id}
-                                        className={`flex justify-between items-center border border-slate-300 rounded p-2 cursor-pointer hover:bg-slate-100 ${
-                                            selectedAddress?.id === address.id ? 'bg-slate-200' : ''
-                                        }`}
-                                        onClick={() => setSelectedAddress(address)}
-                                    >
-                                        <p className="text-sm">
-                                            {address.name}, {address.city}, {address.state},{' '}
-                                            {address.zip}
-                                        </p>
-                                        <XIcon
-                                            size={16}
-                                            className="text-red-500 hover:text-red-700 cursor-pointer"
-                                            // 🟥 Here’s the line you asked for 👇
-                                            onClick={(e) => {
-                                                e.stopPropagation(); // Prevent selecting while deleting
-                                                handleDeleteAddress(address.id);
-                                            }}
-                                        />
-                                    </div>
-                                ))}
+                                {/*
+                  show latest on top visually by sorting by createdAt descending if available,
+                  otherwise show reversed array.
+                */}
+                                {addressList
+                                    .slice()
+                                    .sort((a, b) => {
+                                        const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                                        const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                                        return tb - ta; // newest first
+                                    })
+                                    .map((address) => (
+                                        <div
+                                            key={address.id}
+                                            className={`flex justify-between items-center border border-slate-300 rounded p-2 cursor-pointer hover:bg-slate-100 ${
+                                                selectedAddress?.id === address.id ? 'bg-slate-200' : ''
+                                            }`}
+                                            onClick={() => setSelectedAddress(address)}
+                                        >
+                                            <p className="text-sm">
+                                                {address.name}, {address.city}, {address.state}, {address.zip}
+                                            </p>
+                                            <XIcon
+                                                size={16}
+                                                className="text-red-500 hover:text-red-700 cursor-pointer"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteAddress(address.id);
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
                             </div>
                         )}
                         <button
@@ -191,21 +252,9 @@ const OrderSummary = ({totalPrice, items}) => {
                         {coupon && <p>Coupon:</p>}
                     </div>
                     <div className="flex flex-col gap-1 font-medium text-right">
-                        <p>
-                            {currency}
-                            {totalPrice.toLocaleString()}
-                        </p>
-                        <p>
-                            <Protect plan={'plus'} fallback={`${currency}5`}>
-                                Free
-                            </Protect>
-                        </p>
-                        {coupon && (
-                            <p>{`-${currency}${(
-                                (coupon.discount / 100) *
-                                totalPrice
-                            ).toFixed(2)}`}</p>
-                        )}
+                        <p>{currency}{totalPrice.toLocaleString()}</p>
+                        <p>{currency}{shippingFee.toLocaleString()}</p>
+                        {coupon && <p>{`-${currency}${discount.toFixed(2)}`}</p>}
                     </div>
                 </div>
 
@@ -226,7 +275,8 @@ const OrderSummary = ({totalPrice, items}) => {
                             className="border border-slate-400 p-1.5 rounded w-full outline-none"
                         />
                         <button
-                            className="bg-slate-600 text-white px-3 rounded hover:bg-slate-800 active:scale-95 transition-all">
+                            className="bg-slate-600 text-white px-3 rounded hover:bg-slate-800 active:scale-95 transition-all"
+                        >
                             Apply
                         </button>
                     </form>
@@ -249,19 +299,7 @@ const OrderSummary = ({totalPrice, items}) => {
             <div className="flex justify-between py-4">
                 <p>Total:</p>
                 <p className="font-medium text-right">
-                    <Protect
-                        plan={'plus'}
-                        fallback={`${currency}${
-                            coupon
-                                ? (totalPrice + 5 - (coupon.discount / 100) * totalPrice).toFixed(2)
-                                : (totalPrice + 5).toLocaleString()
-                        }`}
-                    >
-                        {currency}
-                        {coupon
-                            ? (totalPrice - (coupon.discount / 100) * totalPrice).toFixed(2)
-                            : totalPrice.toLocaleString()}
-                    </Protect>
+                    {currency}{finalTotal.toLocaleString()}
                 </p>
             </div>
 
@@ -274,7 +312,21 @@ const OrderSummary = ({totalPrice, items}) => {
                 Place Order
             </button>
 
-            {showAddressModal && <AddressModal setShowAddressModal={setShowAddressModal}/>}
+            {/* AddressModal — supports onSuccess callback if implemented in modal */}
+            {showAddressModal && (
+                <AddressModal
+                    setShowAddressModal={setShowAddressModal}
+                    onSuccess={(newAddress) => {
+                        // If modal gives us the new address directly, select it immediately.
+                        if (newAddress) {
+                            setSelectedAddress(newAddress);
+                            toast.success('New address added & selected');
+                        }
+                        // close modal (modal may already close itself)
+                        setShowAddressModal(false);
+                    }}
+                />
+            )}
         </div>
     );
 };

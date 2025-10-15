@@ -20,7 +20,7 @@ const RatingModal = ({ratingModal, setRatingModal}) => {
             return toast('Please select a rating');
         }
         if (review.length < 5) {
-            return toast('Write a short review');
+            return toast('Write a short review of at least two words');
         }
         try {
             const token = await getToken();
