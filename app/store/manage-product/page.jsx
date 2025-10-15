@@ -52,6 +52,22 @@ export default function StoreManageProducts() {
 
     if (loading) return <Loading/>
 
+    // Helper to truncate HTML text to specific word count
+    function getTruncatedTextFromHtml(html, wordLimit = 20) {
+        if (!html) return "";
+        let text = html
+            .replace(/<\/p>/gi, "\n")
+            .replace(/<br\s*\/?>/gi, "\n")
+            .replace(/<[^>]+>/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+
+        const words = text.split(/\s+/);
+        if (words.length <= wordLimit) return text;
+
+        return words.slice(0, wordLimit).join(" ") + " ...";
+    }
+
     return (
         <>
             <h1 className="text-2xl text-slate-500 mb-5">Manage <span
@@ -76,7 +92,21 @@ export default function StoreManageProducts() {
                                 {product.name}
                             </div>
                         </td>
-                        <td className="px-4 py-3 max-w-md text-slate-600 hidden md:table-cell truncate">{product.description}</td>
+                        <td className="px-4 py-3 max-w-md text-slate-600 hidden md:table-cell">
+                            <div
+                                className="max-w-xl text-slate-600 break-words"
+                                style={{
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'normal'
+                                }}
+                            >
+                                {getTruncatedTextFromHtml(product.description, 10)}
+                            </div>
+                        </td>
                         <td className="px-4 py-3 hidden md:table-cell">{currency} {product.mrp.toLocaleString()}</td>
                         <td className="px-4 py-3">{currency} {product.price.toLocaleString()}</td>
                         <td className="px-4 py-3 text-center">
