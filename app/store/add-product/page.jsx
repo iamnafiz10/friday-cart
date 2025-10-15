@@ -1,7 +1,7 @@
 'use client'
 import {assets} from "@/assets/assets"
 import Image from "next/image"
-import {useState, useRef} from "react"
+import {useState, useRef, useEffect} from "react"
 import {toast} from "react-hot-toast"
 import {useAuth} from "@clerk/nextjs";
 import axios from "axios";
@@ -12,12 +12,6 @@ const JoditEditor = dynamic(() => import("jodit-react"), {ssr: false});
 
 export default function StoreAddProduct() {
 
-    const categories = [
-        'Electronics', 'Clothing', 'Home & Kitchen', 'Beauty & Health',
-        'Toys & Games', 'Sports & Outdoors', 'Books & Media',
-        'Food & Drink', 'Hobbies & Crafts', 'Others'
-    ]
-
     const editor = useRef(null)
     const [images, setImages] = useState({1: null, 2: null, 3: null, 4: null})
     const [productInfo, setProductInfo] = useState({
@@ -27,8 +21,27 @@ export default function StoreAddProduct() {
         price: 0,
         category: "",
     })
+    const [categories, setCategories] = useState([]) // ✅ from DB
     const [loading, setLoading] = useState(false)
     const {getToken} = useAuth();
+
+    // ✅ Fetch categories from database
+    const fetchCategories = async () => {
+        try {
+            const token = await getToken();
+            const {data} = await axios.get('/api/admin/category', {
+                headers: {Authorization: `Bearer ${token}`},
+            });
+            setCategories(data.categories || []);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to load categories");
+        }
+    };
+
+    useEffect(() => {
+        fetchCategories();
+    }, []);
 
     const onChangeHandler = (e) => {
         setProductInfo({...productInfo, [e.target.name]: e.target.value})
@@ -59,9 +72,10 @@ export default function StoreAddProduct() {
 
             const token = await getToken();
             const {data} = await axios.post('/api/store/product', formData, {
-                headers: {Authorization: `Bearer ${token}`}
-            })
-            toast.success(data.message)
+                headers: {Authorization: `Bearer ${token}`},
+            });
+
+            toast.success(data.message);
 
             // Reset form
             setProductInfo({
@@ -70,12 +84,12 @@ export default function StoreAddProduct() {
                 mrp: 0,
                 price: 0,
                 category: "",
-            })
-            setImages({1: null, 2: null, 3: null, 4: null})
+            });
+            setImages({1: null, 2: null, 3: null, 4: null});
         } catch (error) {
             toast.error(error?.response?.data?.error || error.message);
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
     }
 
@@ -95,8 +109,8 @@ export default function StoreAddProduct() {
         processPasteHTML: true,
         defaultActionOnPaste: "insert_clear_html",
         disablePlugins: [
-            'speechRecognize', // 🎙️ removes mic
-            'ai-assistant',    // 🤖 removes AI icons
+            'speechRecognize',
+            'ai-assistant',
             'pasteStorage',
             'pasteFromWord'
         ],
@@ -105,7 +119,6 @@ export default function StoreAddProduct() {
             replaceNBSP: false,
             fillEmptyParagraph: false,
         },
-        // ✅ Only essential toolbar buttons
         buttons: [
             "bold", "italic", "underline", "strikethrough", "|",
             "ul", "ol", "|",
@@ -149,7 +162,7 @@ export default function StoreAddProduct() {
             </div>
 
             {/* Product Name */}
-            <label className="flex flex-col gap-2 my-6 ">
+            <label className="flex flex-col gap-2 my-6">
                 Name
                 <input
                     type="text"
@@ -162,8 +175,7 @@ export default function StoreAddProduct() {
                 />
             </label>
 
-
-            {/* --- Product Description Section --- */}
+            {/* Product Description */}
             <label className="flex flex-col gap-2 my-6">
                 Description
                 <div
@@ -182,7 +194,7 @@ export default function StoreAddProduct() {
 
             {/* Prices */}
             <div className="flex gap-5">
-                <label className="flex flex-col gap-2 ">
+                <label className="flex flex-col gap-2">
                     Actual Price ($)
                     <input
                         type="number"
@@ -190,11 +202,11 @@ export default function StoreAddProduct() {
                         onChange={onChangeHandler}
                         value={productInfo.mrp}
                         placeholder="0"
-                        className="w-full max-w-45 p-2 px-4 outline-none border border-slate-200 rounded resize-none"
+                        className="w-full max-w-45 p-2 px-4 outline-none border border-slate-200 rounded"
                         required
                     />
                 </label>
-                <label className="flex flex-col gap-2 ">
+                <label className="flex flex-col gap-2">
                     Offer Price ($)
                     <input
                         type="number"
@@ -202,26 +214,29 @@ export default function StoreAddProduct() {
                         onChange={onChangeHandler}
                         value={productInfo.price}
                         placeholder="0"
-                        className="w-full max-w-45 p-2 px-4 outline-none border border-slate-200 rounded resize-none"
+                        className="w-full max-w-45 p-2 px-4 outline-none border border-slate-200 rounded"
                         required
                     />
                 </label>
             </div>
 
-            {/* Category */}
-            <select
-                onChange={e => setProductInfo({...productInfo, category: e.target.value})}
-                value={productInfo.category}
-                className="w-full max-w-sm p-2 px-4 my-6 outline-none border border-slate-200 rounded"
-                required
-            >
-                <option value="">Select a category</option>
-                {categories.map((category) => (
-                    <option key={category} value={category}>{category}</option>
-                ))}
-            </select>
-
-            <br/>
+            {/* ✅ Dynamic Category Selector */}
+            <label className="flex flex-col gap-2 my-6">
+                Category
+                <select
+                    onChange={e => setProductInfo({...productInfo, category: e.target.value})}
+                    value={productInfo.category}
+                    className="w-full max-w-sm p-2 px-4 outline-none border border-slate-200 rounded"
+                    required
+                >
+                    <option value="">Select a category</option>
+                    {categories.map((cat) => (
+                        <option key={cat.id ?? cat._id ?? cat.name} value={cat.name}>
+                            {cat.name}
+                        </option>
+                    ))}
+                </select>
+            </label>
 
             <button
                 disabled={loading}
