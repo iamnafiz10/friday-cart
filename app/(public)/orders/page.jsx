@@ -60,7 +60,7 @@ export default function Orders() {
 
     return (
         <div className="min-h-[70vh] mx-6">
-            {/* ✅ Bangla Islamic Alert */}
+            {/* ✅ Bangla Alert */}
             {hasPlacedOrder && (
                 <div className="max-w-3xl mx-auto my-10 animate-fadeIn">
                     <div

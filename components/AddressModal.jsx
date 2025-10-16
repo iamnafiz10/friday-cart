@@ -19,8 +19,8 @@ const AddressModal = ({setShowAddressModal}) => {
         street: '',
         city: '',
         state: '',
-        zip: '',
-        country: '',
+        zip: 'NO',
+        country: 'Bangladesh',
         phone: ''
     });
 
@@ -78,33 +78,48 @@ const AddressModal = ({setShowAddressModal}) => {
                 </h2>
                 <input name="name" onChange={handleAddressChange} value={address.name}
                        className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="text"
-                       placeholder="Enter your name" required/>
+                       placeholder="আপনার নাম লিখুন" required/>
                 <input name="email" onChange={handleAddressChange} value={address.email}
                        className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="email"
-                       placeholder="Email address" required/>
-                <input name="street" onChange={handleAddressChange} value={address.street}
-                       className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="text"
-                       placeholder="Street" required/>
-                <div className="flex gap-4">
-                    <input name="city" onChange={handleAddressChange} value={address.city}
-                           className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="text"
-                           placeholder="City" required/>
-                    <input name="state" onChange={handleAddressChange} value={address.state}
-                           className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="text"
-                           placeholder="State" required/>
-                </div>
-                <div className="flex gap-4">
-                    <input name="zip" onChange={handleAddressChange} value={address.zip}
-                           className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="number"
-                           placeholder="Zip code" required/>
-                    <input name="country" onChange={handleAddressChange} value={address.country}
-                           className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="text"
-                           placeholder="Country" required/>
-                </div>
+                       placeholder="আপনার ইমেইল লিখুন" required/>
                 <input name="phone" onChange={handleAddressChange} value={address.phone}
                        className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="text"
-                       placeholder="Phone" required/>
-
+                       placeholder="মোবাইল" required/>
+                {/* ✅ Replace this input with a dropdown */}
+                <select
+                    name="city"
+                    onChange={handleAddressChange}
+                    value={address.city || ""}
+                    className="p-2 px-4 outline-none border border-slate-200 rounded w-full bg-white text-gray-700 focus:ring-1 focus:ring-gray-200 focus:border-gray-300 hover:bg-gray-50 cursor-pointer"
+                    required
+                >
+                    <option value="" disabled hidden>
+                        আপনার স্থান নির্বাচন করুন
+                    </option>
+                    <option value="Outside Dhaka">ঢাকার বাহিরে</option>
+                    <option value="Inside Dhaka">ঢাকার ভিতরে</option>
+                </select>
+                <div className="flex gap-4">
+                    <input name="state" onChange={handleAddressChange} value={address.state}
+                           className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="text"
+                           placeholder="থানা" required/>
+                    <input name="street" onChange={handleAddressChange} value={address.street}
+                           className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="text"
+                           placeholder="গ্রাম" required/>
+                </div>
+                <div className="flex gap-4">
+                    {/*<input name="zip" onChange={handleAddressChange} value={address.zip}*/}
+                    {/*       className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="number"*/}
+                    {/*       placeholder="Zip code" required/>*/}
+                    <input
+                        name="country"
+                        value="Bangladesh"
+                        readOnly
+                        className="p-2 px-4 outline-none border border-slate-200 rounded w-full bg-gray-100 text-slate-600 cursor-not-allowed"
+                        type="text"
+                        placeholder="দেশ"
+                    />
+                </div>
                 <button
                     type="submit"
                     className="bg-slate-800 text-white text-sm font-medium py-2.5 rounded-md hover:bg-slate-900 active:scale-95 transition-all"

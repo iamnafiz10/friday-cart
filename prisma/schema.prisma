@@ -119,7 +119,7 @@ model Address {
     street    String
     city      String
     state     String
-    zip       String
+    zip       String?  @default("NO")
     country   String
     phone     String
     createdAt DateTime @default(now())

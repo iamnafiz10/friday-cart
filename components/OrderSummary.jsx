@@ -100,9 +100,16 @@ const OrderSummary = ({totalPrice, items}) => {
         }
     };
 
-    // 🟣 Dynamic shipping cost logic
-    const shippingFee =
-        selectedAddress && selectedAddress.city?.toLowerCase() === 'dhaka' ? 80 : 150;
+    // 🟣 Dynamic shipping cost logic (clean & accurate)
+    let shippingFee = 150;
+
+    if (selectedAddress) {
+        if (selectedAddress.city === "Inside Dhaka") {
+            shippingFee = 150;
+        } else if (selectedAddress.city === "Outside Dhaka") {
+            shippingFee = 80;
+        }
+    }
 
     // 🧮 Calculate totals
     const discount = coupon ? (coupon.discount / 100) * totalPrice : 0;
@@ -152,17 +159,12 @@ const OrderSummary = ({totalPrice, items}) => {
             } catch {
                 newest = addressList[addressList.length - 1];
             }
-            // set it as selected only if the user hasn't selected one
-            // (keeps current UX: user must tap to change)
-            // comment this line if you don't want automatic pre-selection on page load
-            // setSelectedAddress(newest || null);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // run once on mount
 
     return (
         <div
-            className="w-full max-w-lg lg:max-w-[340px] bg-slate-50/30 border border-slate-200 text-slate-500 text-sm rounded-xl p-7"
+            className="w-full lg:max-w-[340px] bg-slate-50/30 border border-slate-200 text-slate-500 text-sm rounded-xl p-7"
         >
             <h2 className="text-xl font-medium text-slate-600">Payment Summary</h2>
             <p className="text-slate-400 text-xs my-4">Payment Method</p>
@@ -181,19 +183,30 @@ const OrderSummary = ({totalPrice, items}) => {
                 </label>
             </div>
 
+            <div className="flex gap-2 items-center mt-3">
+                <p className="cursor-pointer font-semibold text-[12px]">
+                    ঢাকার ভিতরে শিপিং চার্জ <span className="text-blue-500">৮০</span> টাকা ঢাকার বাহিরে <span
+                    className="text-blue-500">১৫০</span> টাকা।
+                </p>
+            </div>
+
             {/* Address Section */}
             <div className="my-4 py-4 border-y border-slate-200 text-slate-400">
                 <p>Address</p>
                 {selectedAddress ? (
-                    <div className="flex gap-2 items-center">
-                        <p>
-                            {selectedAddress.name}, {selectedAddress.city}, {selectedAddress.state}, {selectedAddress.zip}
-                        </p>
-                        <SquarePenIcon
-                            onClick={() => setSelectedAddress(null)}
-                            className="cursor-pointer"
-                            size={18}
-                        />
+                    <div className="grid grid-cols-12 gap-2 items-center">
+                        <div className="col-span-10">
+                            <p>
+                                {selectedAddress.name}, {selectedAddress.city}, {selectedAddress.state}, {selectedAddress.street}
+                            </p>
+                        </div>
+                        <div className="col-span-2 ml-auto">
+                            <SquarePenIcon
+                                onClick={() => setSelectedAddress(null)}
+                                className="cursor-pointer"
+                                size={18}
+                            />
+                        </div>
                     </div>
                 ) : (
                     <div>
@@ -213,22 +226,26 @@ const OrderSummary = ({totalPrice, items}) => {
                                     .map((address) => (
                                         <div
                                             key={address.id}
-                                            className={`flex justify-between items-center border border-slate-300 rounded p-2 cursor-pointer hover:bg-slate-100 ${
+                                            className={`grid grid-cols-12 justify-between items-center border border-slate-300 rounded p-2 cursor-pointer hover:bg-slate-100 ${
                                                 selectedAddress?.id === address.id ? 'bg-slate-200' : ''
                                             }`}
                                             onClick={() => setSelectedAddress(address)}
                                         >
-                                            <p className="text-sm">
-                                                {address.name}, {address.city}, {address.state}, {address.zip}
-                                            </p>
-                                            <XIcon
-                                                size={16}
-                                                className="text-red-500 hover:text-red-700 cursor-pointer"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteAddress(address.id);
-                                                }}
-                                            />
+                                            <div className="col-span-10">
+                                                <p className="text-sm">
+                                                    {address.name}, {address.city}, {address.state}, {address.street}
+                                                </p>
+                                            </div>
+                                            <div className="col-span-2 ml-auto">
+                                                <XIcon
+                                                    size={16}
+                                                    className="text-red-500 hover:text-red-700 cursor-pointer"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteAddress(address.id);
+                                                    }}
+                                                />
+                                            </div>
                                         </div>
                                     ))}
                             </div>
